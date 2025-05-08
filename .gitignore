@@ -1,0 +1,7 @@
+.vscode
+__pycache__
+
+pretrained_models
+pretrained_models_mandarin
+
+*.bin

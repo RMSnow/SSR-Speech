@@ -1,0 +1,5 @@
+{
+    "typeCheckingMode": "off",
+    "reportUnknownArgumentType": "none",
+    "reportUnknownParameterType": "none"
+}

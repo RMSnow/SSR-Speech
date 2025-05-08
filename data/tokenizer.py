@@ -52,7 +52,7 @@ class TextTokenizer:
             language_switch=language_switch,
             words_mismatch=words_mismatch,
         )
-        
+
         self.backend = phonemizer
         self.separator = separator
 
@@ -62,8 +62,7 @@ class TextTokenizer:
             # "ɐ    m|iː|n?"    ɹ|ɪ|z|ɜː|v; h|ɪ|z.
             pp = re.findall(r"\w+|[^\w\s]", word, re.UNICODE)
             fields.extend(
-                [p for p in pp if p != self.separator.phone]
-                + [self.separator.word]
+                [p for p in pp if p != self.separator.phone] + [self.separator.word]
             )
         assert len("".join(fields[:-1])) == len(phonemized) - phonemized.count(
             self.separator.phone
@@ -84,6 +83,7 @@ def tokenize_text(tokenizer: TextTokenizer, text: str) -> List[str]:
     phonemes = tokenizer([text.strip()])
     return phonemes[0]  # k2symbols
 
+
 def convert_audio(wav: torch.Tensor, sr: int, target_sr: int, target_channels: int):
     assert wav.shape[0] in [1, 2], "Audio must be mono or stereo."
     if target_channels == 1:
@@ -96,19 +96,20 @@ def convert_audio(wav: torch.Tensor, sr: int, target_sr: int, target_channels: i
     wav = torchaudio.transforms.Resample(sr, target_sr)(wav)
     return wav
 
+
 class AudioTokenizer:
     """EnCodec audio."""
 
-    def __init__(
-        self,
-        device: Any = None,
-        signature = None
-    ) -> None:
+    def __init__(self, device: Any = None, signature=None) -> None:
+        import sys
+
+        sys.path.append("/storage/zhangxueyao/workspace/SSR-Speech/audiocraft")
         from audiocraft.solvers import WMCompressionSolver
+
         model = WMCompressionSolver.model_from_checkpoint(signature).eval()
         self.sample_rate = model.sample_rate
         self.channels = model.channels
-        
+
         if not device:
             device = torch.device("cpu")
             if torch.cuda.is_available():
@@ -129,8 +130,16 @@ class AudioTokenizer:
     def decode(self, frames: torch.Tensor, scale: torch.Tensor) -> torch.Tensor:
         return self.codec.decode(frames, scale)
 
-    def wmdecode(self, frames: torch.Tensor, marks: torch.Tensor, wav: torch.Tensor, scale: torch.Tensor):
-        out, _ = self.codec.wmdecode(frames.to(self.device), marks.to(self.device), wav.to(self.device), scale)
+    def wmdecode(
+        self,
+        frames: torch.Tensor,
+        marks: torch.Tensor,
+        wav: torch.Tensor,
+        scale: torch.Tensor,
+    ):
+        out, _ = self.codec.wmdecode(
+            frames.to(self.device), marks.to(self.device), wav.to(self.device), scale
+        )
         return out
 
     def detect_watermark(self, wav: torch.Tensor):
@@ -138,10 +147,14 @@ class AudioTokenizer:
         return marks
 
 
-def tokenize_audio(tokenizer: AudioTokenizer, audio_path: str, offset = -1, num_frames=-1, multiple=320):
+def tokenize_audio(
+    tokenizer: AudioTokenizer, audio_path: str, offset=-1, num_frames=-1, multiple=320
+):
     # Load and pre-process the audio waveform
-    if offset != -1 and num_frames!=-1:
-        wav, sr = torchaudio.load(audio_path, frame_offset=offset, num_frames=num_frames)
+    if offset != -1 and num_frames != -1:
+        wav, sr = torchaudio.load(
+            audio_path, frame_offset=offset, num_frames=num_frames
+        )
     else:
         wav, sr = torchaudio.load(audio_path)
 
@@ -149,7 +162,7 @@ def tokenize_audio(tokenizer: AudioTokenizer, audio_path: str, offset = -1, num_
     padding_length = (multiple - (current_length % multiple)) % multiple
     if padding_length > 0:
         wav = F.pad(wav, (0, padding_length), "constant", 0)
-    
+
     wav = convert_audio(wav, sr, tokenizer.sample_rate, tokenizer.channels)
     wav = wav.unsqueeze(0)
 
